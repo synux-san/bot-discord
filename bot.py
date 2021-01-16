@@ -21,8 +21,6 @@ bot.remove_command('help')
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
     await bot.change_presence(activity=discord.Game(name="Loup dans la Bergerie"))
-    test = module.db_connect()
-    module.db_disconnect(test)
 
 
 @bot.command(name='create', help="Debut de jeu")

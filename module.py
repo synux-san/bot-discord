@@ -23,28 +23,6 @@ emoji_vote = lambda : ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '
 	here will be function
 """
 
-def db_connect():
-	"""
-		connexion à la base de donnée
-	"""
-	DATABASE_URL = environ['DATABASE_URL']
-	try:
-		conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-		print("connected successfully")
-	except (Exception, psycopg2.DatabaseError) as error:
-		print(error)
-		return False
-	return conn
-
-
-def db_disconnect(conn):
-	"""
-		deconnexion
-	"""
-	if conn is not None:
-		conn.close()
-	print("disconeted successfully")
-
 
 	# retourne [heures, minutes, secondes] de type int
 current_time = lambda : map(int, datetime.now().strftime("%H:%M:%S").split(":"))
