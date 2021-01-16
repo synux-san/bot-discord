@@ -260,14 +260,6 @@ async def help(ctx, arg):
 
 
 ###		PARTIE DE MANIEMENT DES ERREURS		###
-@bot.event
-@create.error
-async def on_create_error(ctx, error):
-	"""
-		intercepter les erreurs sur la commande $lgcreate et afficher dans le terminal
-	"""))
-
-	###		=========================		###
 
 @bot.event
 async def on_command_error(ctx, error):
