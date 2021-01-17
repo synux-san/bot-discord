@@ -257,13 +257,15 @@ async def help(ctx, arg=""):
 	embed = discord.Embed(title="Help", color=0x7A5B10)
 	embed.add_field(name="Rappel", value="Les crochets tels que [] ou <> ne sont pas à utiliser lors de l'execution des commandes.")
 	if arg == "":
-		embed.add_field(name="\uFEFF", value="La commande {arg} n'est pas trouvée.")
+		pass
 	elif arg == "create":
 		embed.add_field(name="Commande Create", value="Description: permet de créer un nouveau jeu. Les membres avec la permission administratreur activé ne peuvent pas jouer.")
 		embed.add_field(name="Utilisation: ", value="$lgcreate <@member...>")
 	elif arg == "info":
 		embed.add_field(name="Commande Info", value="Description : permet d'avoir des informations sur un rôle du jeu")
 		embed.add_field(name="Utilisation : ", value="$lginfo [rôle...]")
+	else:
+		embed.add_field(name="\uFEFF", value="La commande {arg} n'est pas trouvée.")
 	await ctx.send(embed=embed)
 
 
