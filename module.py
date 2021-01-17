@@ -106,3 +106,5 @@ async def channel_creation(ctx, channel_name, members):
 	return channel
 
 
+async def kill_perm(channel, member):
+	channel.set_permission(member, send_messages=False, add_reactions=False, embed_links=False, attach_files=False)

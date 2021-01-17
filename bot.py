@@ -21,8 +21,6 @@ bot.remove_command('help')
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
     await bot.change_presence(activity=discord.Game(name="Loup dans la Bergerie"))
-    test = module.db_connect()
-    module.db_disconnect(test)
 
 
 @bot.command(name='create', help="Debut de jeu")
@@ -43,7 +41,7 @@ async def create(ctx, *to_invit: discord.Member):
 	to_invit = tuple(to_invit)
 		
 	###			MESSAGE D'INVITATION 		###
-	invit_message = f"{ctx.author.name} vous invite pour une partie à Gravenviille.\nPenses-tu pouvoir tenir le coup?\n {module.emoji_yes} pour accepter\n {module.emoji_no} pour refuser\n {module.emoji_close} pour stoper l'ajout de participant (uniquement {ctx.author.name}#{ctx.author.discriminator})"
+	invit_message = f"{ctx.author.name} vous invite pour une partie à Gravenviille.\n {module.emoji_yes} pour accepter\n {module.emoji_no} pour refuser\n {module.emoji_close} pour stoper l'ajout de participant (uniquement {ctx.author.name}#{ctx.author.discriminator})"
 		#	============================	#
 	embed = discord.Embed(title="Invitation", color=0x9e9210)
 	embed.add_field(name="\uFEFF", value=invit_message, inline=False)
@@ -105,10 +103,10 @@ async def create(ctx, *to_invit: discord.Member):
 	
 	if len(players) > 6:
 		begin_limit = 1
-		player_list[players[0]] = "renard"
+		player_list[players[0]] = "entrainé"
 		
 		embed = discord.Embed(title="Information", color=0x35874f)
-		embed.add_field(name="\uFEFF", value=role_message(player=player_list[0], role="renard", server=ctx.guild.name, invite=villager_channel.create_invite()))
+		embed.add_field(name="\uFEFF", value=role_message(player=player_list[0], role="entrainé", server=ctx.guild.name, invite=villager_channel.create_invite()))
 		await player[0].send(embed=embed)
 	
 	villagers = players[begin_limit:limit]
@@ -127,9 +125,8 @@ async def create(ctx, *to_invit: discord.Member):
 		embed = discord.Embed(title="Information", color=0x35874f)
 		embed.add_field(name="\uFEFF", value=role_message)
 		await impostor.send(embed=embed)
-	###	imformation joueur : rôle à envoyer à la fin du jeu	###
+	###	imformation joueur imposteur : rôle à envoyer à la fin du jeu	###
 	role_embed = discord.Embed(title="Information", color=0x9A106D)
-	role_embed.add_field(name="villageois", value=', '.join([str(villager.name) for villager in villagers]))
 	role_embed.add_field(name="Imposteurs", value=', '.join([str(impostor.name) for impostor in impostors]))
 
 	###		CREATION DES DEUX SALONS VILLAGEOIS ET IMPOSTEUR		###
@@ -154,7 +151,7 @@ async def create(ctx, *to_invit: discord.Member):
 				killed = max(list(vote.values()), key=list(vote.values()).count)
 				if (((night_or_day/2)%2) == 0 and players[0] == killed): # au nuit paire
 					first_match_killer = list(vote.keys()[list(vote.values()).index(players[0])])
-					revenge = await player[0].send("{players[0].name}, {first_match_killer.name} a voter pour votre mort. Que feras-tu?\n{module.emoji_yes} : pour le laiser en vie\n{module.emoji_no} : pour partir avec lui.\nVous avez 20 secondes")
+					revenge = await player[0].send("{players[0].name}, {first_match_killer.name} a voter pour votre mort. Que feras-tu?\n{module.emoji_yes} : pour le laiser en vie\n{module.emoji_no} : pour l'éliminer.\nVous avez 10 secondes")
 					await revenge.add_reaction(module.emoji_yes)
 					await revenge.add_reaction(module.emoji_no)
 					try:
@@ -164,9 +161,12 @@ async def create(ctx, *to_invit: discord.Member):
 					else:
 						if reaction.emoji == module.emoji_yes:
 							impostors.remove(first_match_killer)
-							await villager_channel.send(f"RIP: {first_match_killer} a été tué(e)")
+							module.kill_perm(channel=impostor_channel, member=first_match_killer)
+							module.kill_perm(channel=villager_channel, member=first_match_killer)
+							await villager_channel.send(f"RIP, {first_match_killer.name} a été éliminé(e)")
 				villagers.remove(killed)
-				await villager_channel.send(f"RIP: {killed.name} a été tué(e).{module.emoji_sad}")
+				module.kill_perm(channel=villager_channel, member=killed)
+				await villager_channel.send(f"RIP, {killed.name} a été éliminé(e).")
 			else:
 				await villager_channel.send("Les imposteurs n'ont pas attaqué le village cette nuit.")
 			
@@ -180,14 +180,16 @@ async def create(ctx, *to_invit: discord.Member):
 			if vote != {}:
 				killed = max(list(vote.values()), key=list(vote.values()).count)
 				villagers.remove(killed)
-				await villager_channel.send(f"{killed.name} killed")
+				await villager_channel.send(f"{killed.name} a été eliminé(e)")
 				players.remove(killed)
+				module.kill_perm(channel=villager_channel, member=killed)
 				if killed in villager:
 					villager.remove(killed)
 				else:
 					impostor.remove(killed)
+					module.kill_perm(channel=impostor_channel, member=killed)
 			else:
-				await villager_channel.send("Personne n'as été tuer")
+				await villager_channel.send("Personne n'as été éliminé(e)")
 	
 	impostor_channel.send("Ça y est c'est la fin... {module.emoji_death}")
 	wlist = []
@@ -211,25 +213,30 @@ async def create(ctx, *to_invit: discord.Member):
 	
 
 @bot.command(name='info', help="Information sur un rôle")
-async def info(ctx, *roles):
+async def info(ctx, role=""):
 	"""
 		Donner les informations sur un rôle donné
 	"""
 	rappel = "Les crochets tels que [] ou <> ne sont pas à utiliser lors de l'execution des commandes."
 	embed = discord.Embed(title="Information", color=0x9A004D)
-	if roles == ():
+	if role != "":
 		embed.add_field(name="Rappel : ", value=rappel, inline=True)
 		embed.add_field(name="Utilisation : ", value="$lginfo [rôles]", inline=False)
-	for role in roles:
-		if role.lower() == "villageois":
-			embed.add_field(name="Villageois", value="Description : Il est un humain sans pouvoir special. Étant victime, il peut voter le jour pour tuer un autres villageois suspect d'être un imposteur\nIl gagne la partie si tous les imposteurs sont tués")
-		elif role.lower() == "imposteur":
-			embed.add_field(name="Imposteur", value="Description : Il est avant tout un villageois. Il peut voter la nuit pour tuer un villageois et le jour pour en tuer un autre. son rôle est de defendre ses semblables pour qu'il soit en vie jusqu'à la fin du jeu.\nIl gagne la partie en groupe s'il ne reste que des imposteurs dans le jeu ou seul s'il est le seul survivant.")
-		elif role.lower() == "renard":
-			embed.add_field(name="Renard", value="Description : Au nuit paire, si il obtient plus de vote pour mourir, il peut tuer un des imposteurs qui a voté pour sa mort.")
+		if role.lower() == "villageois" or role.lower() == "vil":
+			embed.add_field(name="Villageois", value="Alias : vil")
+			embed.add_field(name="But : ", value="Éliminer tous les imposteurs")
+			embed.add_field(name="Description : ", value=" Il vote le jour pour eliminer un autres villageois suspect d'être un imposteur\nIl gagne la partie si tous les imposteurs sont éliminés")
+		elif role.lower() == "imposteur" or role.lower() == "imp":
+			embed.add_field(name="Imposteur", value="Alias : imp")
+			embed.add_field(name="Description : ", value="Il est avant tout un villageois. Il peut voter la nuit pour éliminer un villageois et le jour pour en éliminer un autre. son rôle est de defendre ses semblables pour qu'il soit en vie jusqu'à la fin du jeu.\nIl gagne la partie si tous les villageois sont éliminés.")
+		elif role.lower() == "entrainé" or role.lower() == "ent":
+			embed.add_field(name="L'entrainé", value="Alias : ent")
+			embed.add_field(name="Description : ", value="Description : Au nuit paire, si il obtient plus de vote pour mourir, il peut tuer un des imposteurs qui a voté pour sa mort.")
 		else:
 			embed.add_field(name="\uFEFF", value=f"Le rôle {role.capitalize()} n'exite pas")
-	await ctx.reply(embed=embed)
+		await ctx.reply(embed=embed)
+	else:
+		await help(ctx, "info")
 
 	###		====================		###
 
@@ -238,11 +245,12 @@ async def info(ctx, *roles):
 async def bug(ctx, *, report):
 	develloper_id = 698327021385941002
 	develloper = await bot.fetch_user(develloper_id)
-	await develloper.send(report)
+	await develloper.send(f"bug de {ctx.author.name} dans {ctx.guild.name} : {report}")
+	await ctx.send(f"Merci {ctx.author.name}, le bug a été bien envoyé.")
 
 
 @bot.command(name='help')
-async def help(ctx, arg):
+async def help(ctx, arg=""):
 	"""
 		Avoir de l'aide sur les commandes
 	"""
