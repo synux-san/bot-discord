@@ -84,7 +84,8 @@ async def create(ctx, *to_invit: discord.Member):
 						player_list.pop(reactor)
 				elif (reaction.emoji == module.emoji_close and reactor.id == ctx.author.id):
 					looking_for_react = False
-	
+
+	players = list(player_list.keys())
 		#	---------------------	#
 	if len(players) < min_player:
 		return await ctx.send(f"Il faut au minimum {min_player} joueurs. Reviens une prochaine fois avec plus de joueur")
@@ -94,20 +95,25 @@ async def create(ctx, *to_invit: discord.Member):
 	
 	###		ASSIGNER DES RÔLES		###
 		#	======variables======	#
-	players = list(player_list.keys())
 	begin_limit = 0
 	min_player = 4
-	limit = floor(len(players[::])/2)
+	limit = floor(2*len(players[::])/3)
 	shuffle(players)
-	role_message = lambda player, role, server, invite : f"{player.name}, vous avez obtenu le rôle du renard\n$lginfo {role} pour plus d'information.\n\nDans 20 secondes les votes commancent sur le serveur {ctx.guild.name}"
+	role_message = lambda player, role, server, invite : f"{player.name}, vous avez obtenu le rôle {role}\n$lginfo {role} pour plus d'information.\n\nDans 20 secondes les votes commancent sur le serveur {ctx.guild.name}.Lien : {invite}"
+	
+		#	---------------------	#
+	if len(players) < min_player:
+		return await ctx.send(f"Il faut au minimum {min_player} joueurs. Reviens une prochaine fois avec plus de joueur")
+		# message de rôle à envoyer en DM
+	
+	await ctx.send(f"Liste des participants : {', '.join(map(str, [player.name for player in player_list.keys()]))}")
 	
 	if len(players) > 6:
-		begin_limit = 1
+		begin_limit += 1
 		player_list[players[0]] = "entrainé"
-		
 		embed = discord.Embed(title="Information", color=0x35874f)
 		embed.add_field(name="\uFEFF", value=role_message(player=player_list[0], role="entrainé", server=ctx.guild.name, invite=villager_channel.create_invite()))
-		await player[0].send(embed=embed)
+		await players[0].send(embed=embed)
 	
 	villagers = players[begin_limit:limit]
 	for villager in villagers:
@@ -116,14 +122,14 @@ async def create(ctx, *to_invit: discord.Member):
 		embed = discord.Embed(title="Information", color=0x35874f)
 		embed.add_field(name="\uFEFF", value=role_message(player=villager, role="villageois", serveur=ctx.guild.name, invite=villager_channel.create_invite()))
 		await villager.send(embed=embed)
+	if len(players) > 6:
+		villagers += [players[0]]
 	
 	impostors = players[limit::]
 	for impostor in impostors:
 		player_list[impostor] = "impostor"
-		role_message = f"{impostor.name}, vous avez obtenue le rôle imposteur\n -> $lginfo imposteur pour plus d'information.\n\nDans 20 secondes les votes commencent sur le serveur {ctx.guild.name}"
-		
 		embed = discord.Embed(title="Information", color=0x35874f)
-		embed.add_field(name="\uFEFF", value=role_message)
+		embed.add_field(name="\uFEFF", value=role_message(player=impostor, role="imposteur", serveur=ctx.guild.name, invite=impostor_channel.create_invite()))
 		await impostor.send(embed=embed)
 	###	imformation joueur imposteur : rôle à envoyer à la fin du jeu	###
 	role_embed = discord.Embed(title="Information", color=0x9A106D)
@@ -241,6 +247,9 @@ async def info(ctx, role=""):
 	###		====================		###
 
 
+@bot.command(name='invite')
+async def invite(ctx):
+	await ctx.send("https://discord.com/api/oauth2/authorize?client_id=797677986144714782&permissions=2080898161&scope=bot")
 @bot.command(name='bug')
 async def bug(ctx, *, report):
 	develloper_id = 698327021385941002
